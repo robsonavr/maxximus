@@ -50,11 +50,11 @@
 //          -
 // 
 // Vout = Vin x R2 / (R1 + R2)
-// 5 = 15 x R2 / (1M + R2)
-// 5 x (1M + R2) = R2 x 15
-// 5M + 5 x R2 = R2 x 15
-// 5M = 10 x R2
-// R2 = 500K ohms
+// 5 = 15 x R2 / (100k + R2)
+// 5 x (100k + R2) = R2 x 15
+// 100k + 5 x R2 = R2 x 15
+// 100k = 10 x R2
+// R2 = 10K ohms
 */
 
 //Biblioteca para comunicacao serial com modulo bluetooth
@@ -103,9 +103,11 @@ unsigned int time_ms = 5000; //tempo em ms para rampa de frenagem e aceleracao
 unsigned short pwm_max = 0xFF; //valor max do pwm definido pelo potenciometro
 unsigned short pwm_value = 0x00; //variavel da rampa de aceleracao
 float volts = 0.0; //tensao na bateria
+unsigned long millisShowBatt = millis(); // faz a leitura da tensao da bateria
 
 void setup()
 {
+  Serial.println("Iniciado");
   // BTS7960 board
   pinMode(RPWM_Output, OUTPUT);
   pinMode(LPWM_Output, OUTPUT);
@@ -127,7 +129,7 @@ void setup()
 
 void loop()
 {
-  //pwm_max = map(analogRead(MaxPWM), 0, 1023, 0, 0xFF); // maxima velocidade definida pelo potenciometro
+  pwm_max = map(analogRead(MaxPWM), 0, 1023, 0, 0xFF); // maxima velocidade definida pelo potenciometro
 
   if(mySerialBT.available()) // comando bluetooth
   { 
@@ -173,6 +175,7 @@ void loop()
     {
       if (motor_dirR || motor_dirL) // se o motor em movimento > pare
       {
+        Serial.println("Parar motor");
         stopMotor();
         motor_dirR = false;  // desabilita selecao direcao
         motor_dirL = false;
@@ -182,6 +185,7 @@ void loop()
       }
       else // se o motor esta parado > move para frente
       {
+        Serial.println("Motor para frente");
         motor_dirR = true; //motor R selecionado (frente)
         motor_dirL = false;
         startMotor(); //rampa de aceleracao
@@ -197,6 +201,7 @@ void loop()
     {
       if (motor_dirL || motor_dirR) // se o motor em movimento > pare
       {
+        Serial.println("Parar motor");
         stopMotor();
         motor_dirR = false;  // desabilita selecao direcao
         motor_dirL = false;
@@ -206,6 +211,7 @@ void loop()
       }
       else // se o motor esta parado > move para traz
       {
+        Serial.println("Motor para traz");
         motor_dirR = false; 
         motor_dirL = true; //motor L selecionado (traz)
         startMotor(); //rampa de aceleracao
@@ -213,6 +219,11 @@ void loop()
       }
     }
     previus_state2 = current_state2;
+  }
+  if((millis() - millisShowBatt) > 5000)
+  {
+    showBattVoltage();
+    millisShowBatt = millis();
   }
 }
 
@@ -281,7 +292,7 @@ void logotipo()
 
 void showBattVoltage()
 {
-  float volts = analogRead(V_batt)/1023 * 15;
+  float volts = map(analogRead(V_batt), 0, 1023, 0, 15);
   display.clearDisplay();  // Clear the buffer
   display.setTextColor(WHITE); //configura cor para branco para inicializar a tela
   display.setTextSize(1); //configura o tamanho da fonte
@@ -306,15 +317,14 @@ void showMotor()
   display.setCursor(0,0);
   display.print("Maxximus - Motor");
   display.setCursor(0,10);
+  display.print("pwm_max: ");
+  display.println(pwm_max);
   if (motor_dirR) display.print("Acc R: ");
   if (motor_dirL) display.print("Acc L: ");
   if (!(motor_dirR || motor_dirL)) display.print("Desacc : ");
   display.print(pwm_value/pwm_max*100);
   display.print(" %");
   display.display();
-  delay(500);
-  showBattVoltage();
 }
 
-
- 
+  
